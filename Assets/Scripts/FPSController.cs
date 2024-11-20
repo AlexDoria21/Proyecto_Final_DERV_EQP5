@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(AudioSource))]
 public class FPSController : MonoBehaviour
 {
     public Camera playerCamera;
     public float walkSpeed = 6f;
     public float runSpeed = 12f;
     public float jumpPower = 7f;
-    public float gravity = 20f; // Incrementa el valor de gravedad para un comportamiento más natural.
+    public float gravity = 20f;
 
     public float lookSpeed = 2f;
     public float lookXLimit = 45f;
@@ -19,11 +20,18 @@ public class FPSController : MonoBehaviour
 
     public bool canMove = true;
 
+    // Sonidos
+    public AudioClip[] footstepSounds; // Array de sonidos de pasos
+    private AudioSource audioSource;
+    private float stepInterval = 0.5f; // Intervalo entre sonidos de pasos
+    private float stepTimer = 0f; // Temporizador para controlar el intervalo
+
     CharacterController characterController;
 
     void Start()
     {
         characterController = GetComponent<CharacterController>();
+        audioSource = GetComponent<AudioSource>();
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
@@ -38,14 +46,12 @@ public class FPSController : MonoBehaviour
         float curSpeedX = canMove ? (isRunning ? runSpeed : walkSpeed) * Input.GetAxis("Vertical") : 0;
         float curSpeedY = canMove ? (isRunning ? runSpeed : walkSpeed) * Input.GetAxis("Horizontal") : 0;
 
-        // Movimiento en el eje horizontal
         moveDirection.x = forward.x * curSpeedX + right.x * curSpeedY;
         moveDirection.z = forward.z * curSpeedX + right.z * curSpeedY;
 
         // Movimiento en el eje vertical (gravedad y salto)
         if (characterController.isGrounded)
         {
-            // Si está en el suelo, inicializa la dirección Y
             moveDirection.y = -2f;
 
             // Manejo del salto
@@ -53,10 +59,20 @@ public class FPSController : MonoBehaviour
             {
                 moveDirection.y = jumpPower;
             }
+
+            // Reproducir sonidos de pasos si el jugador se mueve
+            if (moveDirection.x != 0 || moveDirection.z != 0)
+            {
+                stepTimer += Time.deltaTime;
+                if (stepTimer >= stepInterval)
+                {
+                    PlayFootstepSound();
+                    stepTimer = 0f;
+                }
+            }
         }
         else
         {
-            // Aplica gravedad si no está en el suelo
             moveDirection.y -= gravity * Time.deltaTime;
         }
 
@@ -70,6 +86,16 @@ public class FPSController : MonoBehaviour
             rotationX = Mathf.Clamp(rotationX, -lookXLimit, lookXLimit);
             playerCamera.transform.localRotation = Quaternion.Euler(rotationX, 0, 0);
             transform.rotation *= Quaternion.Euler(0, Input.GetAxis("Mouse X") * lookSpeed, 0);
+        }
+    }
+
+    void PlayFootstepSound()
+    {
+        if (footstepSounds.Length > 0)
+        {
+            int index = Random.Range(0, footstepSounds.Length); // Seleccionar un sonido aleatorio
+            audioSource.clip = footstepSounds[index];
+            audioSource.Play();
         }
     }
 }
